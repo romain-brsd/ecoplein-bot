@@ -9,7 +9,7 @@ supabase = create_client(url, key)
 
 def fetch_and_update():
     # On récupère les 100 dernières mises à jour du gouvernement
-    api_url = "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-carburants-en-france-flux-instantane-v2/records?limit=100"
+    api_url = "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-carburants-en-france-flux-instantane-v2/records?limit=1000"
     
     try:
         response = requests.get(api_url)
