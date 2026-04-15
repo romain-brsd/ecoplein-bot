@@ -45,11 +45,23 @@ st.markdown("""
         border-radius: 8px !important;
         font-weight: 600 !important;
     }
+
     [data-testid="metric-container"] {
         background: white;
         border-radius: 10px;
         padding: 12px;
         box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+
+    /* FIX : valeurs des métriques invisibles */
+    [data-testid="metric-container"] [data-testid="stMetricValue"] {
+        color: #1a1a2e !important;
+        font-size: 1.4rem !important;
+        font-weight: 700 !important;
+    }
+    [data-testid="metric-container"] [data-testid="stMetricLabel"] {
+        color: #555 !important;
+        font-size: 0.85rem !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -111,8 +123,7 @@ with st.sidebar:
                 except Exception:
                     st.session_state.position_label = "Position GPS détectée"
 
-            label = st.session_state.position_label
-            st.success("✅ " + label)
+            st.success("✅ " + st.session_state.position_label)
         else:
             st.info("En attente du signal GPS…")
 
@@ -244,12 +255,20 @@ tooltip = {
     }
 }
 
-st.pydeck_chart(pdk.Deck(
-    layers=[layer],
-    initial_view_state=view_state,
-    tooltip=tooltip,
-    map_style="mapbox://styles/mapbox/light-v10"
-))
+# FIX : CARTO_LIGHT = gratuit, aucun token Mapbox requis
+# Fallback sur st.map() si pydeck échoue
+try:
+    st.pydeck_chart(pdk.Deck(
+        layers=[layer],
+        initial_view_state=view_state,
+        tooltip=tooltip,
+        map_style=pdk.map_styles.CARTO_LIGHT
+    ))
+except Exception:
+    map_data = df_filtre[["latitude", "longitude"]].rename(
+        columns={"latitude": "lat", "longitude": "lon"}
+    )
+    st.map(map_data, zoom=12)
 
 # ── LISTE STATIONS ──
 st.subheader("📋 Classement par prix")
