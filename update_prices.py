@@ -7,7 +7,7 @@ key = os.environ.get("SUPABASE_KEY")
 supabase = create_client(url, key)
 
 def fetch_and_update():
-    api_url = "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-carburants-en-france-flux-instantane-v2/records?limit=100"
+    api_url = api_url = "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-carburants-en-france-flux-instantane-v2/records?limit=100&order_by=prix_maj%20desc"
     response = requests.get(api_url)
     data = response.json()
     results = data.get('results', [])
