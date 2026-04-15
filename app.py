@@ -13,93 +13,93 @@ st.set_page_config(
     menu_items={"About": "EcoPlein – Trouvez le carburant le moins cher près de vous."}
 )
 
-# ─── CSS CUSTOM ────────────────────────────────────────────────────────────────
+# ─── CSS — approche chirurgicale sans sélecteur div global ─────────────────────
 st.markdown("""
 <style>
+    /* ── Global ── */
     .stApp { background-color: #f8f9fa; }
-    h1 { color: #1a1a2e !important; font-weight: 800 !important; }
 
+    /* ── Sidebar : fond sombre SANS toucher aux divs génériques ── */
     [data-testid="stSidebar"] { background-color: #1a1a2e !important; }
-    [data-testid="stSidebar"] p,
-    [data-testid="stSidebar"] span,
-    [data-testid="stSidebar"] label,
-    [data-testid="stSidebar"] div,
-    [data-testid="stSidebar"] small,
-    [data-testid="stSidebar"] h1,
-    [data-testid="stSidebar"] h2,
-    [data-testid="stSidebar"] h3 { color: #f0f0f0 !important; }
+    [data-testid="stSidebar"] .stMarkdown p    { color: #f0f0f0 !important; }
+    [data-testid="stSidebar"] .stMarkdown h1,
+    [data-testid="stSidebar"] .stMarkdown h2,
+    [data-testid="stSidebar"] .stMarkdown h3   { color: #f0f0f0 !important; }
+    [data-testid="stSidebar"] .stMarkdown small { color: #cccccc !important; }
+    [data-testid="stSidebar"] label             { color: #f0f0f0 !important; }
+    [data-testid="stSidebar"] .stSelectbox > div > div { color: #f0f0f0 !important; }
+    [data-testid="stSidebar"] .stRadio span     { color: #f0f0f0 !important; }
+    [data-testid="stSidebar"] .stButton button  { color: #1a1a2e !important; }
+    [data-testid="stSidebar"] hr                { border-color: #3a3a5e !important; }
 
+    /* ── Zone principale : forcer texte sombre ── */
+    [data-testid="stMainBlockContainer"] p,
+    [data-testid="stMainBlockContainer"] span,
+    [data-testid="stMainBlockContainer"] label,
+    [data-testid="stMainBlockContainer"] h1,
+    [data-testid="stMainBlockContainer"] h2,
+    [data-testid="stMainBlockContainer"] h3,
+    [data-testid="stMainBlockContainer"] h4 { color: #1a1a2e !important; }
+
+    /* ── Métriques ── */
     [data-testid="metric-container"] {
-        background: white;
+        background: white !important;
         border-radius: 10px;
         padding: 12px;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        box-shadow: 0 1px 4px rgba(0,0,0,0.08);
     }
-    [data-testid="metric-container"] [data-testid="stMetricValue"] {
-        color: #1a1a2e !important;
-        font-size: 1.4rem !important;
-        font-weight: 700 !important;
-    }
-    [data-testid="metric-container"] [data-testid="stMetricLabel"] {
-        color: #555555 !important;
-        font-size: 0.85rem !important;
-    }
+    [data-testid="stMetricValue"]  { color: #1a1a2e !important; font-weight: 700 !important; }
+    [data-testid="stMetricLabel"]  { color: #555555 !important; }
 
+    /* ── Cards stations ── */
     .station-card {
         background: white;
         border-radius: 12px;
         padding: 16px 20px;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.07);
         border-left: 4px solid #2ecc71;
+        color: #1a1a2e;
     }
     .station-card.best {
         border-left: 4px solid #e74c3c;
         background: #fff9f9;
     }
-    .station-card h4 { margin: 0 0 4px 0; color: #1a1a2e !important; font-size: 1rem; }
-    .station-card .price { font-size: 1.4rem; font-weight: 800; color: #e74c3c !important; }
-    .station-card .meta { color: #666666 !important; font-size: 0.85rem; margin-top: 4px; }
+    .card-nom    { margin: 0 0 4px 0; font-size: 1rem; font-weight: 700; color: #1a1a2e; }
+    .card-prix   { font-size: 1.4rem; font-weight: 800; color: #e74c3c; white-space: nowrap; }
+    .card-meta   { font-size: 0.85rem; color: #555555; margin-top: 4px; }
 
-    .prix-autres {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        margin-top: 8px;
-    }
+    /* ── Prix autres carburants ── */
+    .prix-autres { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
     .prix-tag {
         background: #f0f4f8;
         border-radius: 6px;
         padding: 3px 10px;
         font-size: 0.8rem;
-        color: #444444 !important;
-        border: 1px solid #e0e0e0;
+        color: #333333;
+        border: 1px solid #dde3ea;
     }
-    .prix-tag strong { color: #1a1a2e !important; }
 
-    .services-row {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
-        margin-top: 8px;
-    }
+    /* ── Services ── */
+    .services-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
     .service-badge {
         background: #eaf6f0;
         border-radius: 20px;
         padding: 2px 10px;
         font-size: 0.75rem;
-        color: #27ae60 !important;
-        border: 1px solid #c3e8d5;
+        color: #1a7a45;
+        border: 1px solid #b8dfc9;
     }
     .automate-badge {
-        background: #eaf0fb;
+        background: #e8f1fb;
         border-radius: 20px;
         padding: 2px 10px;
         font-size: 0.75rem;
-        color: #2980b9 !important;
-        border: 1px solid #c3d8f0;
+        color: #1a5a9a;
+        border: 1px solid #b8cfe8;
     }
 
+    /* ── Bouton Y aller ── */
     .stLinkButton a {
         background: #2ecc71 !important;
         color: white !important;
@@ -107,95 +107,131 @@ st.markdown("""
         border-radius: 8px !important;
         font-weight: 600 !important;
     }
-    .main p, .main span, .main div { color: #1a1a2e; }
 </style>
 """, unsafe_allow_html=True)
 
 # ─── SESSION STATE ─────────────────────────────────────────────────────────────
-if "lat_user" not in st.session_state:
-    st.session_state.lat_user = None
-if "lon_user" not in st.session_state:
-    st.session_state.lon_user = None
-if "position_label" not in st.session_state:
-    st.session_state.position_label = None
+for key in ["lat_user", "lon_user", "position_label"]:
+    if key not in st.session_state:
+        st.session_state[key] = None
 
 # ─── INIT ──────────────────────────────────────────────────────────────────────
 geolocator = Nominatim(user_agent="ecoplein_app_v2")
-url = st.secrets["SUPABASE_URL"]
-key = st.secrets["SUPABASE_KEY"]
+url  = st.secrets["SUPABASE_URL"]
+key  = st.secrets["SUPABASE_KEY"]
 supabase = create_client(url, key)
 
-# ─── FAMILLES DE CARBURANTS ────────────────────────────────────────────────────
+# ─── FAMILLES CARBURANTS ───────────────────────────────────────────────────────
 FAMILLES = {
     "E10":    ["SP95", "SP98", "E85"],
-    "SP95":   ["E10", "SP98", "E85"],
-    "SP98":   ["E10", "SP95", "E85"],
-    "E85":    ["E10", "SP95", "SP98"],
+    "SP95":   ["E10",  "SP98", "E85"],
+    "SP98":   ["E10",  "SP95", "E85"],
+    "E85":    ["E10",  "SP95", "SP98"],
     "Gazole": ["GPLC"],
     "GPLC":   ["Gazole"],
 }
 
-# ─── ICÔNES SERVICES ──────────────────────────────────────────────────────────
 ICONES_SERVICES = {
     "toilettes": "🚻", "boutique": "🛒", "lavage": "🚿",
     "restaurant": "🍽️", "wifi": "📶", "gonflage": "🔧",
     "dab": "💳", "handicap": "♿", "gaz": "🔵",
     "automate": "🤖", "poids lourds": "🚛", "bar": "☕",
-    "air": "🌬️", "aspirateur": "🧹"
+    "air": "🌬️", "aspirateur": "🧹",
 }
 
 # ─── HELPERS ──────────────────────────────────────────────────────────────────
-def html_prix_autres(nom_station, ville_station, df_complet, type_carbu_actuel):
-    """Prix des carburants de la même famille pour cette station."""
-    carbus = FAMILLES.get(type_carbu_actuel, [])
+def safe(val, default=""):
+    """Convertit toute valeur pandas/None en string propre."""
+    if val is None or (isinstance(val, float) and pd.isna(val)):
+        return default
+    s = str(val).strip()
+    return default if s.lower() in ("none", "nan", "nat") else s
+
+
+def html_prix_autres(nom, ville, df_complet, type_carbu):
+    carbus = FAMILLES.get(type_carbu, [])
     if not carbus:
         return ""
-
-    df_station = df_complet[
-        (df_complet["nom"] == nom_station) &
-        (df_complet["ville"] == ville_station)
-    ]
-
-    tags = []
-    for carbu in carbus:
-        match = df_station[df_station["carburant_nom"].str.lower() == carbu.lower()]
-        if not match.empty:
-            p = str(match.iloc[0]["prix"])
-            tags.append('<span class="prix-tag">' + carbu + " : <strong>" + p + " €</strong></span>")
-
-    if not tags:
+    try:
+        df_st = df_complet[
+            (df_complet["nom"] == nom) &
+            (df_complet["ville"] == ville)
+        ]
+        tags = []
+        for c in carbus:
+            match = df_st[df_st["carburant_nom"].str.lower() == c.lower()]
+            if not match.empty:
+                p = safe(match.iloc[0]["prix"])
+                if p:
+                    tags.append(
+                        '<span class="prix-tag">' + c + ' : <strong>' + p + ' €</strong></span>'
+                    )
+        if not tags:
+            return ""
+        return '<div class="prix-autres">' + "".join(tags) + "</div>"
+    except Exception:
         return ""
-    return '<div class="prix-autres">' + "".join(tags) + "</div>"
 
 
 def html_services(services_str, automate_24_24):
-    """
-    Badges services + automate 24h/24.
-    services_str : chaîne séparée par des virgules (ex: "Boutique, Lavage, DAB")
-    automate_24_24 : valeur issue du champ horaires_automate_24_24
-    """
-    badges = []
+    try:
+        badges = []
+        a = safe(automate_24_24)
+        if a and a.lower() not in ("non", "false", "0", ""):
+            badges.append('<span class="automate-badge">🤖 Automate 24h/24</span>')
 
-    # ── Automate 24/24 ──
-    # Le champ peut être "Oui", True, "true", "1", 1 selon ta BDD
-    if automate_24_24 and str(automate_24_24).strip().lower() not in ("", "non", "false", "0", "none"):
-        badges.append('<span class="automate-badge">🤖 Automate 24h/24</span>')
+        s = safe(services_str)
+        if s:
+            items = [x.strip() for x in s.split(",") if x.strip() and x.strip().lower() not in ("none","nan")]
+            for item in items[:8]:
+                icone = ""
+                for k, ico in ICONES_SERVICES.items():
+                    if k in item.lower():
+                        icone = ico + " "
+                        break
+                badges.append('<span class="service-badge">' + icone + item + "</span>")
 
-    # ── Services ──
-    if services_str:
-        services = [s.strip() for s in str(services_str).split(",") if s.strip()]
-        for s in services[:8]:
-            icone = ""
-            for key, ico in ICONES_SERVICES.items():
-                if key in s.lower():
-                    icone = ico + " "
-                    break
-            badges.append('<span class="service-badge">' + icone + s + "</span>")
-
-    if not badges:
+        if not badges:
+            return ""
+        return '<div class="services-row">' + "".join(badges) + "</div>"
+    except Exception:
         return ""
-    return '<div class="services-row">' + "".join(badges) + "</div>"
 
+
+def build_card_html(row, card_class, badge, df_complet, type_carbu):
+    """Construit le HTML complet d'une card station. Isolé pour try/except propre."""
+    nom      = safe(row.get("nom"),      "Station")
+    adresse  = safe(row.get("adresse"),  "")
+    ville    = safe(row.get("ville"),    "")
+    cp       = safe(row.get("cp"),       "")
+    dept     = safe(row.get("departement"), "")
+    prix_val = safe(row.get("prix"),     "—")
+    dist_raw = row.get("distance_km")
+    distance = str(round(float(dist_raw), 1)) if dist_raw is not None else "—"
+
+    # Adresse complète
+    loc = adresse
+    if cp and ville:
+        loc += ", " + cp + " " + ville
+    elif ville:
+        loc += ", " + ville
+    if dept and dept.lower() not in ville.lower():
+        loc += " (" + dept + ")"
+
+    h_autres = html_prix_autres(row.get("nom"), row.get("ville"), df_complet, type_carbu)
+    h_svc    = html_services(row.get("services"), row.get("automate_24_24"))
+
+    return (
+        '<div class="' + card_class + '">'
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+        '<p class="card-nom">' + nom + ' <small style="color:#999;font-weight:400">' + badge + "</small></p>"
+        '<span class="card-prix">' + prix_val + " €</span>"
+        "</div>"
+        '<div class="card-meta">📍 ' + loc + "&nbsp;&nbsp;📏 <strong>" + distance + " km</strong></div>"
+        + h_autres
+        + h_svc
+        + "</div>"
+    )
 
 # ─── SIDEBAR ───────────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -211,34 +247,30 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("**📍 Ma position**")
     mode_pos = st.radio(
-        "Mode de localisation",
-        ["GPS (Auto)", "Adresse (Manuel)"],
+        "Mode", ["GPS (Auto)", "Adresse (Manuel)"],
         label_visibility="collapsed"
     )
 
     if mode_pos == "GPS (Auto)":
         if st.button("🔄 Actualiser ma position GPS"):
-            st.session_state.lat_user = None
-            st.session_state.lon_user = None
+            st.session_state.lat_user      = None
+            st.session_state.lon_user      = None
             st.session_state.position_label = None
 
         loc = get_geolocation()
         if loc:
             st.session_state.lat_user = loc["coords"]["latitude"]
             st.session_state.lon_user = loc["coords"]["longitude"]
-
             if not st.session_state.position_label:
                 try:
                     rev = geolocator.reverse(
                         (st.session_state.lat_user, st.session_state.lon_user),
                         language="fr"
                     )
-                    if rev:
-                        city = rev.raw.get("address", {}).get("city", "")
-                        st.session_state.position_label = city or "Position GPS détectée"
+                    city = rev.raw.get("address", {}).get("city", "") if rev else ""
+                    st.session_state.position_label = city or "Position GPS détectée"
                 except Exception:
                     st.session_state.position_label = "Position GPS détectée"
-
             st.success("✅ " + st.session_state.position_label)
         else:
             st.info("En attente du signal GPS…")
@@ -255,8 +287,8 @@ with st.sidebar:
                     if location:
                         st.session_state.lat_user = location.latitude
                         st.session_state.lon_user = location.longitude
-                        raw_label = location.address
-                        st.session_state.position_label = raw_label[:40] + "…" if len(raw_label) > 40 else raw_label
+                        raw = location.address
+                        st.session_state.position_label = raw[:40] + "…" if len(raw) > 40 else raw
                         st.success("📍 " + st.session_state.position_label)
                     else:
                         st.warning("Adresse introuvable. Essayez d'être plus précis.")
@@ -272,73 +304,65 @@ st.caption("Les prix carburant les moins chers près de vous, en temps réel.")
 
 if not st.session_state.lat_user or not st.session_state.lon_user:
     st.markdown("---")
-    _, col_center, _ = st.columns([1, 2, 1])
-    with col_center:
+    _, col_c, _ = st.columns([1, 2, 1])
+    with col_c:
         st.markdown("""
-        <div style="text-align:center; padding:40px 0;">
+        <div style="text-align:center;padding:40px 0">
             <div style="font-size:3rem">🗺️</div>
-            <h3 style="color:#444444">Où êtes-vous ?</h3>
-            <p style="color:#888888;">Activez le GPS ou saisissez votre adresse<br>dans le menu à gauche.</p>
+            <h3 style="color:#444">Où êtes-vous ?</h3>
+            <p style="color:#888">Activez le GPS ou saisissez votre adresse dans le menu à gauche.</p>
         </div>
         """, unsafe_allow_html=True)
     st.stop()
 
 # ── FETCH SUPABASE ──
-lat_user = st.session_state.lat_user
-lon_user = st.session_state.lon_user
-
 with st.spinner("🔍 Recherche des stations autour de vous…"):
     try:
         response = supabase.rpc("get_stations_proches", {
-            "user_lat": lat_user,
-            "user_lon": lon_user
+            "user_lat": st.session_state.lat_user,
+            "user_lon": st.session_state.lon_user
         }).execute()
     except Exception as e:
-        st.error("❌ Impossible de contacter la base de données (" + type(e).__name__ + ").")
+        st.error("❌ Impossible de contacter la base (" + type(e).__name__ + ").")
         st.stop()
 
 if not response.data:
     st.info("Aucune station trouvée dans cette zone.")
     st.stop()
 
-# df_complet = toutes lignes tous carburants (pour les prix croisés)
 df_complet = pd.DataFrame(response.data)
 
-# ── FILTRE CARBURANT PRINCIPAL ──
-df_filtre = df_complet[df_complet["carburant_nom"].str.lower() == type_carbu.lower()].copy()
+# ── FILTRE ──
+df_filtre = df_complet[
+    df_complet["carburant_nom"].str.lower() == type_carbu.lower()
+].copy().sort_values("prix").reset_index(drop=True)
 
 if df_filtre.empty:
-    position_name = st.session_state.position_label or "votre position"
-    st.warning("⚠️ Aucune station proposant du **" + type_carbu + "** trouvée autour de **" + position_name + "**.")
+    pos = st.session_state.position_label or "votre position"
+    st.warning("⚠️ Aucune station proposant du **" + type_carbu + "** trouvée autour de **" + pos + "**.")
     st.stop()
 
-df_filtre = df_filtre.sort_values("prix").reset_index(drop=True)
-
 # ── KPIs ──
-nb = len(df_filtre)
+nb     = len(df_filtre)
 plural = "s" if nb > 1 else ""
 st.markdown("### " + type_carbu + " — " + str(nb) + " station" + plural + " trouvée" + plural)
 
-col1, col2, col3 = st.columns(3)
-with col1:
-    st.metric("💰 Meilleur prix", str(round(df_filtre["prix"].min(), 3)) + " €/L")
-with col2:
+c1, c2, c3 = st.columns(3)
+with c1:
+    st.metric("💰 Meilleur prix",  str(round(df_filtre["prix"].min(), 3))  + " €/L")
+with c2:
     st.metric("📏 La plus proche", str(round(df_filtre["distance_km"].min(), 1)) + " km")
-with col3:
-    st.metric("📊 Prix moyen", str(round(df_filtre["prix"].mean(), 3)) + " €/L")
+with c3:
+    st.metric("📊 Prix moyen",     str(round(df_filtre["prix"].mean(), 3))  + " €/L")
 
 st.markdown("---")
 
-# ── CARTE PYDECK ──
+# ── CARTE ──
 st.subheader("🗺️ Carte des stations")
 
 prix_min = df_filtre["prix"].min()
-df_filtre["color"] = df_filtre["prix"].apply(
-    lambda p: [231, 76, 60, 220] if p == prix_min else [46, 204, 113, 200]
-)
-df_filtre["radius"] = df_filtre["prix"].apply(
-    lambda p: 80 if p == prix_min else 50
-)
+df_filtre["color"]  = df_filtre["prix"].apply(lambda p: [231,76,60,220]  if p == prix_min else [46,204,113,200])
+df_filtre["radius"] = df_filtre["prix"].apply(lambda p: 80 if p == prix_min else 50)
 
 layer = pdk.Layer(
     "ScatterplotLayer",
@@ -348,104 +372,47 @@ layer = pdk.Layer(
     get_radius="radius",
     pickable=True
 )
-
 view_state = pdk.ViewState(
     latitude=df_filtre["latitude"].mean(),
     longitude=df_filtre["longitude"].mean(),
-    zoom=12,
-    pitch=0
+    zoom=12, pitch=0
 )
-
 tooltip = {
     "html": "<b>{nom}</b><br/>💰 {prix} €/L<br/>📏 {distance_km} km",
-    "style": {
-        "backgroundColor": "#1a1a2e",
-        "color": "white",
-        "borderRadius": "8px",
-        "padding": "8px"
-    }
+    "style": {"backgroundColor":"#1a1a2e","color":"white","borderRadius":"8px","padding":"8px"}
 }
 
 try:
     st.pydeck_chart(pdk.Deck(
-        layers=[layer],
-        initial_view_state=view_state,
-        tooltip=tooltip,
-        map_style=pdk.map_styles.CARTO_LIGHT
+        layers=[layer], initial_view_state=view_state,
+        tooltip=tooltip, map_style=pdk.map_styles.CARTO_LIGHT
     ))
 except Exception:
-    map_data = df_filtre[["latitude", "longitude"]].rename(
-        columns={"latitude": "lat", "longitude": "lon"}
+    st.map(
+        df_filtre[["latitude","longitude"]].rename(columns={"latitude":"lat","longitude":"lon"}),
+        zoom=12
     )
-    st.map(map_data, zoom=12)
 
-# ── LISTE STATIONS ──
+# ── LISTE ──
 st.subheader("📋 Classement par prix")
 st.caption("🔴 Moins cher · 🟢 Autres stations")
 
 for i, row in df_filtre.iterrows():
-    is_best = (row["prix"] == prix_min)
-    badge    = "🥇 MEILLEUR PRIX" if is_best else "#" + str(i + 1)
+    is_best    = (row["prix"] == prix_min)
+    badge      = "🥇 MEILLEUR PRIX" if is_best else "#" + str(i + 1)
     card_class = "station-card best" if is_best else "station-card"
-
-    # ── Champs de base (noms exacts de ta BDD) ──
-    nom      = str(row.get("nom", "Station"))
-    adresse  = str(row.get("adresse", ""))
-    ville    = str(row.get("ville", ""))
-    cp       = str(row.get("cp", ""))
-    dept     = str(row.get("departement", ""))
-    prix     = str(row.get("prix", ""))
-    distance = str(round(float(row.get("distance_km", 0)), 1))
-    lat      = str(row.get("latitude", ""))
-    lon      = str(row.get("longitude", ""))
-
-    # ── Champs services ──
-    services_str   = str(row.get("services", ""))
-    automate_24_24 = row.get("automate_24_24", "")
-
-    url_maps = "https://www.google.com/maps/search/?api=1&query=" + lat + "," + lon
-
-    # ── Localisation complète ──
-    # Affiche "75001 Paris (Paris)" si le CP et la ville sont disponibles
-    localisation = adresse
-    if cp and ville:
-        localisation += ", " + cp + " " + ville
-    elif ville:
-        localisation += ", " + ville
-    if dept and dept.lower() not in ville.lower():
-        localisation += " (" + dept + ")"
-
-    # ── Blocs enrichis ──
-    html_autres = html_prix_autres(row.get("nom"), row.get("ville"), df_complet, type_carbu)
-    html_svc    = html_services(services_str, automate_24_24)
+    lat        = safe(row.get("latitude"))
+    lon        = safe(row.get("longitude"))
+    url_maps   = "https://www.google.com/maps/search/?api=1&query=" + lat + "," + lon
 
     col_info, col_btn = st.columns([4, 1])
 
     with col_info:
-        st.markdown(
-            '<div class="' + card_class + '">'
-
-            # Nom + badge + prix principal
-            '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px">'
-            "<h4>" + nom + ' <small style="color:#999999; font-weight:400">' + badge + "</small></h4>"
-            '<span class="price">' + prix + " €</span>"
-            "</div>"
-
-            # Adresse complète + distance
-            '<div class="meta">'
-            "📍 " + localisation + "&nbsp;&nbsp;"
-            "📏 <strong>" + distance + " km</strong>"
-            "</div>"
-
-            # Prix des autres carburants de la même famille
-            + html_autres +
-
-            # Services + automate 24h/24
-            + html_svc +
-
-            "</div>",
-            unsafe_allow_html=True
-        )
+        try:
+            card_html = build_card_html(row, card_class, badge, df_complet, type_carbu)
+        except Exception as e:
+            card_html = "<div class='" + card_class + "'><p>" + safe(row.get("nom"), "Station") + " — erreur d'affichage</p></div>"
+        st.markdown(card_html, unsafe_allow_html=True)
 
     with col_btn:
         st.markdown("<div style='margin-top:14px'>", unsafe_allow_html=True)
