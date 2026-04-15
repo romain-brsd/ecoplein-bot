@@ -10,21 +10,15 @@ st.set_page_config(
     page_title="EcoPlein",
     layout="centered",
     page_icon="⛽",
-    # AMÉLIORATION : menu burger masqué, look plus propre
     menu_items={"About": "EcoPlein – Trouvez le carburant le moins cher près de vous."}
 )
 
 # ─── CSS CUSTOM ────────────────────────────────────────────────────────────────
-# AMÉLIORATION UI : identité visuelle, cards, couleurs cohérentes
 st.markdown("""
 <style>
-    /* Fond général plus doux */
     .stApp { background-color: #f8f9fa; }
-
-    /* Titre principal */
     h1 { color: #1a1a2e !important; font-weight: 800 !important; }
 
-    /* Cards stations */
     .station-card {
         background: white;
         border-radius: 12px;
@@ -41,13 +35,9 @@ st.markdown("""
     .station-card .price { font-size: 1.4rem; font-weight: 800; color: #e74c3c; }
     .station-card .meta { color: #666; font-size: 0.85rem; margin-top: 4px; }
 
-    /* Sidebar */
     [data-testid="stSidebar"] { background: #1a1a2e; }
     [data-testid="stSidebar"] * { color: #f0f0f0 !important; }
-    [data-testid="stSidebar"] .stSelectbox label,
-    [data-testid="stSidebar"] .stRadio label { color: #ccc !important; font-size: 0.9rem; }
 
-    /* Bouton principal */
     .stLinkButton a {
         background: #2ecc71 !important;
         color: white !important;
@@ -55,8 +45,6 @@ st.markdown("""
         border-radius: 8px !important;
         font-weight: 600 !important;
     }
-
-    /* Metric KPI */
     [data-testid="metric-container"] {
         background: white;
         border-radius: 10px;
@@ -66,18 +54,15 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ─── INIT SESSION STATE ─────────────────────────────────────────────────────────
-# AMÉLIORATION : évite de recalculer la position à chaque interaction
+# ─── SESSION STATE ─────────────────────────────────────────────────────────────
 if "lat_user" not in st.session_state:
     st.session_state.lat_user = None
 if "lon_user" not in st.session_state:
     st.session_state.lon_user = None
 if "position_label" not in st.session_state:
     st.session_state.position_label = None
-if "df_stations" not in st.session_state:
-    st.session_state.df_stations = None
 
-# ─── SUPABASE ──────────────────────────────────────────────────────────────────
+# ─── INIT ──────────────────────────────────────────────────────────────────────
 geolocator = Nominatim(user_agent="ecoplein_app_v2")
 url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_KEY"]
@@ -102,18 +87,18 @@ with st.sidebar:
         label_visibility="collapsed"
     )
 
-    # ── Mode GPS ──
+    # ── GPS ──
     if mode_pos == "GPS (Auto)":
         if st.button("🔄 Actualiser ma position GPS"):
-            # AMÉLIORATION : bouton explicite plutôt que refresh automatique
             st.session_state.lat_user = None
             st.session_state.lon_user = None
+            st.session_state.position_label = None
 
         loc = get_geolocation()
         if loc:
-            st.session_state.lat_user = loc['coords']['latitude']
-            st.session_state.lon_user = loc['coords']['longitude']
-            # AMÉLIORATION : reverse geocoding pour afficher la ville
+            st.session_state.lat_user = loc["coords"]["latitude"]
+            st.session_state.lon_user = loc["coords"]["longitude"]
+
             if not st.session_state.position_label:
                 try:
                     rev = geolocator.reverse(
@@ -125,34 +110,35 @@ with st.sidebar:
                         st.session_state.position_label = city or "Position GPS détectée"
                 except Exception:
                     st.session_state.position_label = "Position GPS détectée"
-            st.success(f"✅ {st.session_state.position_label}")
+
+            label = st.session_state.position_label
+            st.success("✅ " + label)
         else:
-            # AMÉLIORATION : message d'attente clair, pas d'erreur agressive
             st.info("En attente du signal GPS…")
 
-    # ── Mode Manuel ──
+    # ── Manuel ──
     else:
         adresse_saisie = st.text_input(
             "🔍 Ville ou adresse",
             placeholder="Ex: Lyon, Bordeaux, 75001 Paris…"
         )
         if adresse_saisie:
-            # AMÉLIORATION : spinner pendant la recherche
             with st.spinner("Recherche en cours…"):
                 try:
                     location = geolocator.geocode(adresse_saisie, language="fr")
                     if location:
                         st.session_state.lat_user = location.latitude
                         st.session_state.lon_user = location.longitude
-                        # AMÉLIORATION : affiche le nom complet tronqué proprement
-                        label = location.address
-                        st.session_state.position_label = label[:40] + "…" if len(label) > 40 else label
-                        st.success(f"📍 {st.session_state.position_label}")
+                        raw_label = location.address
+                        if len(raw_label) > 40:
+                            st.session_state.position_label = raw_label[:40] + "…"
+                        else:
+                            st.session_state.position_label = raw_label
+                        st.success("📍 " + st.session_state.position_label)
                     else:
                         st.warning("Adresse introuvable. Essayez d'être plus précis.")
                 except Exception as e:
-                    # AMÉLIORATION : erreur plus descriptive
-                    st.error(f"Service de géocodage indisponible ({type(e).__name__}). Réessayez.")
+                    st.error("Service indisponible (" + type(e).__name__ + "). Réessayez.")
 
     st.markdown("---")
     st.caption("EcoPlein v2.0 · Données temps réel")
@@ -161,54 +147,146 @@ with st.sidebar:
 st.title("⛽ EcoPlein")
 st.caption("Les prix carburant les moins chers près de vous, en temps réel.")
 
-# ── ÉTAT VIDE INITIAL ──
-# AMÉLIORATION : onboarding clair au lieu d'un warning agressif
+# ── ÉTAT VIDE ──
 if not st.session_state.lat_user or not st.session_state.lon_user:
     st.markdown("---")
-    col_empty1, col_empty2, col_empty3 = st.columns([1, 2, 1])
-    with col_empty2:
+    _, col_center, _ = st.columns([1, 2, 1])
+    with col_center:
         st.markdown("""
-        <div style="text-align:center; padding: 40px 0; color: #888;">
-            <div style="font-size: 3rem">🗺️</div>
+        <div style="text-align:center; padding:40px 0; color:#888;">
+            <div style="font-size:3rem">🗺️</div>
             <h3 style="color:#444">Où êtes-vous ?</h3>
-            <p>Activez le GPS ou saisissez votre adresse<br>dans le menu à gauche pour trouver les stations près de vous.</p>
+            <p>Activez le GPS ou saisissez votre adresse<br>dans le menu à gauche.</p>
         </div>
         """, unsafe_allow_html=True)
     st.stop()
 
-# ── RÉCUPÉRATION DES DONNÉES ──
+# ── FETCH SUPABASE ──
 lat_user = st.session_state.lat_user
 lon_user = st.session_state.lon_user
 
-# AMÉLIORATION : spinner + cache session pour éviter re-fetch inutile
 with st.spinner("🔍 Recherche des stations autour de vous…"):
     try:
-        response = supabase.rpc('get_stations_proches', {
-            'user_lat': lat_user,
-            'user_lon': lon_user
+        response = supabase.rpc("get_stations_proches", {
+            "user_lat": lat_user,
+            "user_lon": lon_user
         }).execute()
     except Exception as e:
-        st.error(f"❌ Impossible de contacter la base de données ({type(e).__name__}). Vérifiez votre connexion.")
+        st.error("❌ Impossible de contacter la base de données (" + type(e).__name__ + ").")
         st.stop()
 
 if not response.data:
-    st.info("Aucune station trouvée dans cette zone. Élargissez votre recherche.")
+    st.info("Aucune station trouvée dans cette zone.")
     st.stop()
 
 df = pd.DataFrame(response.data)
 
 # ── FILTRE CARBURANT ──
-df_filtre = df[df['carburant_nom'].str.lower() == type_carbu.lower()].copy()
+df_filtre = df[df["carburant_nom"].str.lower() == type_carbu.lower()].copy()
 
-# AMÉLIORATION : message d'erreur dynamique (plus de "Lille" hardcodé !)
 if df_filtre.empty:
-    location_name = st.session_state.position_label or "votre position"
-    st.warning(f"⚠️ Aucune station proposant du **{type_carbu}** n'a été trouvée autour de **{location_name}**.")
+    position_name = st.session_state.position_label or "votre position"
+    st.warning("⚠️ Aucune station proposant du **" + type_carbu + "** trouvée autour de **" + position_name + "**.")
     st.stop()
 
-# Tri par prix
 df_filtre = df_filtre.sort_values("prix").reset_index(drop=True)
 
-# ── KPIs RÉSUMÉ ──
-# AMÉLIORATION : vue d'ensemble immédiate en haut de page
-st.markdown(f"### {type_carbu} — {len(df_filtre)} station{'s' if len(df_filtre) 
+# ── KPIs ──
+nb = len(df_filtre)
+plural = "s" if nb > 1 else ""
+st.markdown("### " + type_carbu + " — " + str(nb) + " station" + plural + " trouvée" + plural)
+
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.metric("💰 Meilleur prix", str(round(df_filtre["prix"].min(), 3)) + " €/L")
+with col2:
+    st.metric("📏 La plus proche", str(round(df_filtre["distance_km"].min(), 1)) + " km")
+with col3:
+    st.metric("📊 Prix moyen", str(round(df_filtre["prix"].mean(), 3)) + " €/L")
+
+st.markdown("---")
+
+# ── CARTE PYDECK ──
+st.subheader("🗺️ Carte des stations")
+
+prix_min = df_filtre["prix"].min()
+
+df_filtre["color"] = df_filtre["prix"].apply(
+    lambda p: [231, 76, 60, 220] if p == prix_min else [46, 204, 113, 200]
+)
+df_filtre["radius"] = df_filtre["prix"].apply(
+    lambda p: 80 if p == prix_min else 50
+)
+
+layer = pdk.Layer(
+    "ScatterplotLayer",
+    data=df_filtre,
+    get_position="[longitude, latitude]",
+    get_color="color",
+    get_radius="radius",
+    pickable=True
+)
+
+view_state = pdk.ViewState(
+    latitude=df_filtre["latitude"].mean(),
+    longitude=df_filtre["longitude"].mean(),
+    zoom=12,
+    pitch=0
+)
+
+tooltip = {
+    "html": "<b>{nom}</b><br/>💰 {prix} €/L<br/>📏 {distance_km} km",
+    "style": {
+        "backgroundColor": "#1a1a2e",
+        "color": "white",
+        "borderRadius": "8px",
+        "padding": "8px"
+    }
+}
+
+st.pydeck_chart(pdk.Deck(
+    layers=[layer],
+    initial_view_state=view_state,
+    tooltip=tooltip,
+    map_style="mapbox://styles/mapbox/light-v10"
+))
+
+# ── LISTE STATIONS ──
+st.subheader("📋 Classement par prix")
+st.caption("🔴 Moins cher · 🟢 Autres stations")
+
+for i, row in df_filtre.iterrows():
+    is_best = (row["prix"] == prix_min)
+    badge = "🥇 MEILLEUR PRIX" if is_best else "#" + str(i + 1)
+    card_class = "station-card best" if is_best else "station-card"
+
+    nom = str(row["nom"])
+    adresse = str(row["adresse"])
+    ville = str(row["ville"])
+    prix = str(row["prix"])
+    distance = str(round(row["distance_km"], 1))
+    lat = str(row["latitude"])
+    lon = str(row["longitude"])
+    url_maps = "https://www.google.com/maps/search/?api=1&query=" + lat + "," + lon
+
+    col_info, col_btn = st.columns([4, 1])
+
+    with col_info:
+        st.markdown(
+            '<div class="' + card_class + '">'
+            '<div style="display:flex; justify-content:space-between; align-items:center">'
+            "<h4>" + nom + ' <small style="color:#999; font-weight:400">' + badge + "</small></h4>"
+            '<span class="price">' + prix + " €</span>"
+            "</div>"
+            '<div class="meta">'
+            "📍 " + adresse + ", " + ville + "&nbsp;&nbsp;"
+            "📏 <strong>" + distance + " km</strong>"
+            "</div>"
+            "</div>",
+            unsafe_allow_html=True
+        )
+
+    with col_btn:
+        st.markdown("<div style='margin-top:14px'>", unsafe_allow_html=True)
+        st.link_button("🚗 Y aller", url_maps)
+        st.markdown("</div>", unsafe_allow_html=True)
