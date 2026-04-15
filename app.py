@@ -2,90 +2,78 @@ import streamlit as st
 from supabase import create_client
 import pandas as pd
 from streamlit_js_eval import get_geolocation
+from geopy.geocoders import Nominatim # Pour transformer l'adresse en GPS
 
-# 1. Configuration de la page (Doit être la première commande Streamlit)
-st.set_page_config(page_title="EcoPlein - Ton essence moins chère", layout="centered", page_icon="⛽")
+# Config
+st.set_page_config(page_title="EcoPlein", layout="centered", page_icon="⛽")
+geolocator = Nominatim(user_agent="ecoplein_app")
 
-# 2. Connexion à Supabase via les Secrets
-try:
-    url = st.secrets["SUPABASE_URL"]
-    key = st.secrets["SUPABASE_KEY"]
-    supabase = create_client(url, key)
-except Exception as e:
-    st.error("Erreur de configuration : Vérifie tes Secrets Streamlit (URL et KEY).")
-    st.stop()
+# Connexion Supabase
+url = st.secrets["SUPABASE_URL"]
+key = st.secrets["SUPABASE_KEY"]
+supabase = create_client(url, key)
 
-# 3. Titre et Design
 st.title("⛽ EcoPlein")
-st.subheader("Les stations les plus proches en temps réel")
 
-# 4. Barre latérale (Sidebar) pour les réglages
+# --- BARRE LATÉRALE ---
 with st.sidebar:
-    st.header("⚙️ Réglages")
-    type_carbu = st.selectbox(
-        "Quel carburant cherches-tu ?", 
-        ["GAZOLE", "E10", "SP98", "SP95", "E85", "GPLC"]
-    )
+    st.header("⚙️ Configuration")
+    type_carbu = st.selectbox("Carburant", ["GAZOLE", "E10", "SP98", "SP95", "E85", "GPLC"])
     
     st.write("---")
-    st.write("📍 **Géolocalisation**")
-    # Tentative de récupération de la position réelle
-    loc = get_geolocation()
+    mode_pos = st.radio("Définir ma position par :", ["📍 GPS (Auto)", "🔍 Adresse (Manuel)"])
     
-    if loc:
-        lat_user = loc['coords']['latitude']
-        lon_user = loc['coords']['longitude']
-        st.success("Position détectée ✅")
+    lat_user, lon_user = None, None
+
+    if mode_pos == "📍 GPS (Auto)":
+        loc = get_geolocation()
+        if loc:
+            lat_user = loc['coords']['latitude']
+            lon_user = loc['coords']['longitude']
+            st.success("GPS Connecté")
     else:
-        st.info("Clique sur 'Autoriser' ou utilise Lille par défaut.")
-        # Coordonnées par défaut (Lille)
-        lat_user = 50.6292
-        lon_user = 3.0573
+        adresse_saisie = st.text_input("Tape ton adresse ou ville :", "Lille, France")
+        if adresse_saisie:
+            location = geolocator.geocode(adresse_saisie)
+            if location:
+                lat_user = location.latitude
+                lon_user = location.longitude
+                st.success(f"C'est parti pour {location.address[:30]}...")
 
-# 5. Récupération des données via la fonction RPC de Supabase
-try:
-    # On appelle ta fonction SQL personnalisée
-    response = supabase.rpc('get_stations_proches', {
-        'user_lat': lat_user,
-        'user_lon': lon_user
-    }).execute()
+# --- AFFICHAGE PRINCIPAL ---
+if lat_user and lon_user:
+    # 1. On montre où l'app pense que tu es
+    st.info(f"Position définie sur : {lat_user:.4f}, {lon_user:.4f}")
     
-    data = response.data
-
-    if data:
-        df = pd.DataFrame(data)
+    # 2. Appel Supabase
+    try:
+        response = supabase.rpc('get_stations_proches', {
+            'user_lat': lat_user,
+            'user_lon': lon_user
+        }).execute()
         
-        # On filtre selon le carburant choisi
-        df_filtre = df[df['carburant_nom'] == type_carbu].copy()
-
-        if not df_filtre.empty:
-            # Calcul pour la carte (Streamlit a besoin des noms 'lat' et 'lon')
-            # Note : On récupère les coordonnées d'origine depuis la table via le RPC
-            # Si le RPC ne renvoie pas lat/lon, on affiche juste la liste.
+        df = pd.DataFrame(response.data)
+        
+        if not df.empty:
+            df_filtre = df[df['carburant_nom'] == type_carbu].copy()
             
-            # Affichage de la liste des stations
-            st.write(f"### Top des stations ({type_carbu})")
-            
-            for index, row in df_filtre.iterrows():
-                with st.expander(f"💰 {row['prix']}€ - {row['nom']}"):
-                    col1, col2 = st.columns([2, 1])
-                    with col1:
-                        st.write(f"**Adresse :** {row['adresse']}")
-                        st.write(f"**Ville :** {row['ville']}")
-                    with col2:
-                        st.metric("Distance", f"{round(row['distance_km'], 1)} km")
-                    
-                    # Petit bouton pour ouvrir dans Google Maps
-                    google_maps_url = f"https://www.google.com/maps/search/?api=1&query={row['nom']} {row['adresse']} {row['ville']}"
-                    st.link_button("Y aller 🚗", google_maps_url)
-        else:
-            st.warning(f"Aucun prix récent trouvé pour le {type_carbu} à proximité.")
-    else:
-        st.info("Recherche de stations en cours...")
+            if not df_filtre.empty:
+                # Affichage d'une carte de confirmation
+                st.write("### Stations autour de toi")
+                # On prépare les données pour la carte Streamlit
+                map_data = df_filtre[['latitude', 'longitude']].rename(columns={'latitude': 'lat', 'longitude': 'lon'})
+                st.map(map_data)
 
-except Exception as e:
-    st.error(f"Oups ! Une erreur est survenue : {e}")
-
-# Pied de page
-st.write("---")
-st.caption("Données : prix-carburants.gouv.fr | Mis à jour automatiquement par ton robot GitHub.")
+                # Liste détaillée
+                for _, row in df_filtre.iterrows():
+                    with st.expander(f"💰 {row['prix']}€ - {row['nom']}"):
+                        st.write(f"📍 {row['adresse']}, {row['ville']}")
+                        st.write(f"📏 Distance : **{round(row['distance_km'], 1)} km**")
+                        url_maps = f"https://www.google.com/maps/search/?api=1&query={row['latitude']},{row['longitude']}"
+                        st.link_button("Y aller 🚗", url_maps)
+            else:
+                st.warning("Aucune station trouvée pour ce carburant ici.")
+    except Exception as e:
+        st.error(f"Erreur technique : {e}")
+else:
+    st.warning("En attente de ta position...")
