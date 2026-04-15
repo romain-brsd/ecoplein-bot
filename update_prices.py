@@ -63,7 +63,7 @@ def fetch_all_records() -> list[dict]:
     return all_records
 
 
-def build_row(record: dict) -> dict | None:
+def build_row(record: dict):
     """
     Transforme un enregistrement API en ligne pour stations_carburant.
     Retourne None si l'enregistrement n'a pas d'id valide.
