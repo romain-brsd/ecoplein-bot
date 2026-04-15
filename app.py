@@ -16,9 +16,43 @@ st.set_page_config(
 # ─── CSS CUSTOM ────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
+    /* ── Global ── */
     .stApp { background-color: #f8f9fa; }
     h1 { color: #1a1a2e !important; font-weight: 800 !important; }
 
+    /* ── Sidebar : ciblage précis au lieu du * ── */
+    [data-testid="stSidebar"] {
+        background-color: #1a1a2e !important;
+    }
+    [data-testid="stSidebar"] p,
+    [data-testid="stSidebar"] span,
+    [data-testid="stSidebar"] label,
+    [data-testid="stSidebar"] div,
+    [data-testid="stSidebar"] small,
+    [data-testid="stSidebar"] h1,
+    [data-testid="stSidebar"] h2,
+    [data-testid="stSidebar"] h3 {
+        color: #f0f0f0 !important;
+    }
+
+    /* ── Métriques : texte forcé visible ── */
+    [data-testid="metric-container"] {
+        background: white;
+        border-radius: 10px;
+        padding: 12px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    [data-testid="metric-container"] [data-testid="stMetricValue"] {
+        color: #1a1a2e !important;
+        font-size: 1.4rem !important;
+        font-weight: 700 !important;
+    }
+    [data-testid="metric-container"] [data-testid="stMetricLabel"] {
+        color: #555555 !important;
+        font-size: 0.85rem !important;
+    }
+
+    /* ── Cards stations ── */
     .station-card {
         background: white;
         border-radius: 12px;
@@ -31,13 +65,23 @@ st.markdown("""
         border-left: 4px solid #e74c3c;
         background: #fff9f9;
     }
-    .station-card h4 { margin: 0 0 4px 0; color: #1a1a2e; font-size: 1rem; }
-    .station-card .price { font-size: 1.4rem; font-weight: 800; color: #e74c3c; }
-    .station-card .meta { color: #666; font-size: 0.85rem; margin-top: 4px; }
+    .station-card h4 {
+        margin: 0 0 4px 0;
+        color: #1a1a2e !important;
+        font-size: 1rem;
+    }
+    .station-card .price {
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: #e74c3c !important;
+    }
+    .station-card .meta {
+        color: #666666 !important;
+        font-size: 0.85rem;
+        margin-top: 4px;
+    }
 
-    [data-testid="stSidebar"] { background: #1a1a2e; }
-    [data-testid="stSidebar"] * { color: #f0f0f0 !important; }
-
+    /* ── Bouton Y aller ── */
     .stLinkButton a {
         background: #2ecc71 !important;
         color: white !important;
@@ -46,22 +90,9 @@ st.markdown("""
         font-weight: 600 !important;
     }
 
-    [data-testid="metric-container"] {
-        background: white;
-        border-radius: 10px;
-        padding: 12px;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-    }
-
-    /* FIX : valeurs des métriques invisibles */
-    [data-testid="metric-container"] [data-testid="stMetricValue"] {
-        color: #1a1a2e !important;
-        font-size: 1.4rem !important;
-        font-weight: 700 !important;
-    }
-    [data-testid="metric-container"] [data-testid="stMetricLabel"] {
-        color: #555 !important;
-        font-size: 0.85rem !important;
+    /* ── Texte général (hors sidebar) ── */
+    .main p, .main span, .main div {
+        color: #1a1a2e;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -164,10 +195,10 @@ if not st.session_state.lat_user or not st.session_state.lon_user:
     _, col_center, _ = st.columns([1, 2, 1])
     with col_center:
         st.markdown("""
-        <div style="text-align:center; padding:40px 0; color:#888;">
+        <div style="text-align:center; padding:40px 0; color:#888888;">
             <div style="font-size:3rem">🗺️</div>
-            <h3 style="color:#444">Où êtes-vous ?</h3>
-            <p>Activez le GPS ou saisissez votre adresse<br>dans le menu à gauche.</p>
+            <h3 style="color:#444444">Où êtes-vous ?</h3>
+            <p style="color:#888888;">Activez le GPS ou saisissez votre adresse<br>dans le menu à gauche.</p>
         </div>
         """, unsafe_allow_html=True)
     st.stop()
@@ -255,8 +286,6 @@ tooltip = {
     }
 }
 
-# FIX : CARTO_LIGHT = gratuit, aucun token Mapbox requis
-# Fallback sur st.map() si pydeck échoue
 try:
     st.pydeck_chart(pdk.Deck(
         layers=[layer],
@@ -294,7 +323,7 @@ for i, row in df_filtre.iterrows():
         st.markdown(
             '<div class="' + card_class + '">'
             '<div style="display:flex; justify-content:space-between; align-items:center">'
-            "<h4>" + nom + ' <small style="color:#999; font-weight:400">' + badge + "</small></h4>"
+            "<h4>" + nom + ' <small style="color:#999999; font-weight:400">' + badge + "</small></h4>"
             '<span class="price">' + prix + " €</span>"
             "</div>"
             '<div class="meta">'
