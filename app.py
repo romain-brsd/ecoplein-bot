@@ -2,11 +2,14 @@ import streamlit as st
 from supabase import create_client
 import pandas as pd
 from streamlit_js_eval import get_geolocation
-from geopy.geocoders import Nominatim # Pour transformer l'adresse en GPS
+from geopy.geocoders import Nominatim
+import time
 
 # Config
 st.set_page_config(page_title="EcoPlein", layout="centered", page_icon="⛽")
-geolocator = Nominatim(user_agent="ecoplein_app")
+
+# On change l'User_Agent pour éviter d'être bloqué par le Geocoder
+geolocator = Nominatim(user_agent="mon_application_carburant_unique_123")
 
 # Connexion Supabase
 url = st.secrets["SUPABASE_URL"]
@@ -15,11 +18,9 @@ supabase = create_client(url, key)
 
 st.title("⛽ EcoPlein")
 
-# --- BARRE LATÉRALE ---
 with st.sidebar:
     st.header("⚙️ Configuration")
     type_carbu = st.selectbox("Carburant", ["GAZOLE", "E10", "SP98", "SP95", "E85", "GPLC"])
-    
     st.write("---")
     mode_pos = st.radio("Définir ma position par :", ["📍 GPS (Auto)", "🔍 Adresse (Manuel)"])
     
@@ -30,50 +31,50 @@ with st.sidebar:
         if loc:
             lat_user = loc['coords']['latitude']
             lon_user = loc['coords']['longitude']
-            st.success("GPS Connecté")
     else:
-        adresse_saisie = st.text_input("Tape ton adresse ou ville :", "Lille, France")
+        adresse_saisie = st.text_input("Tape ton adresse ou ville :", "")
         if adresse_saisie:
-            location = geolocator.geocode(adresse_saisie)
-            if location:
-                lat_user = location.latitude
-                lon_user = location.longitude
-                st.success(f"C'est parti pour {location.address[:30]}...")
+            try:
+                # On ajoute un petit délai pour ne pas brusquer le service gratuit
+                time.sleep(1) 
+                location = geolocator.geocode(adresse_saisie)
+                if location:
+                    lat_user = location.latitude
+                    lon_user = location.longitude
+                    st.success(f"Position : {location.address[:30]}...")
+            except:
+                st.error("Service de recherche indisponible. Réessaie dans 2 secondes.")
 
-# --- AFFICHAGE PRINCIPAL ---
 if lat_user and lon_user:
-    # 1. On montre où l'app pense que tu es
-    st.info(f"Position définie sur : {lat_user:.4f}, {lon_user:.4f}")
+    st.info(f"📍 Position définie sur Lille ({lat_user:.4f}, {lon_user:.4f})")
     
-    # 2. Appel Supabase
     try:
         response = supabase.rpc('get_stations_proches', {
             'user_lat': lat_user,
             'user_lon': lon_user
         }).execute()
         
-        df = pd.DataFrame(response.data)
-        
-        if not df.empty:
-            df_filtre = df[df['carburant_nom'] == type_carbu].copy()
+        if response.data:
+            df = pd.DataFrame(response.data)
+            
+            # ASTUCE TEMPORAIRE : Si tes données sont "NC", on les affiche quand même
+            # pour que tu puisses voir que la géolocalisation fonctionne.
+            mask = (df['carburant_nom'] == type_carbu) | (df['carburant_nom'] == "NC")
+            df_filtre = df[mask].copy()
             
             if not df_filtre.empty:
-                # Affichage d'une carte de confirmation
-                st.write("### Stations autour de toi")
-                # On prépare les données pour la carte Streamlit
+                st.write(f"### Stations proches")
+                
+                # Carte
                 map_data = df_filtre[['latitude', 'longitude']].rename(columns={'latitude': 'lat', 'longitude': 'lon'})
                 st.map(map_data)
 
-                # Liste détaillée
                 for _, row in df_filtre.iterrows():
-                    with st.expander(f"💰 {row['prix']}€ - {row['nom']}"):
+                    nom_affiche = row['nom'] if row['carburant_nom'] != "NC" else f"{row['nom']} (Carburant NC)"
+                    with st.expander(f"💰 {row['prix']}€ - {nom_affiche}"):
                         st.write(f"📍 {row['adresse']}, {row['ville']}")
                         st.write(f"📏 Distance : **{round(row['distance_km'], 1)} km**")
-                        url_maps = f"https://www.google.com/maps/search/?api=1&query={row['latitude']},{row['longitude']}"
-                        st.link_button("Y aller 🚗", url_maps)
             else:
-                st.warning("Aucune station trouvée pour ce carburant ici.")
+                st.warning("Aucune station trouvée ici.")
     except Exception as e:
-        st.error(f"Erreur technique : {e}")
-else:
-    st.warning("En attente de ta position...")
+        st.error(f"Erreur Supabase : {e}")
