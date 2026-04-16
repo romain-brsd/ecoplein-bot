@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# EcoPlein v6 — Mobile-first · GPS · Navigation · Calculateur · Favoris
+# EcoPlein v7 — Mobile-first · GPS · Navigation · Calculateur · Économie · Favoris
 # ─────────────────────────────────────────────────────────────────────────────
 import streamlit as st
 import pandas as pd
@@ -158,6 +158,26 @@ st.markdown("""
 /* ── Calculateur ── */
 .calc-box { background:var(--secondary-background-color); border:1px solid rgba(128,128,128,.18); border-radius:10px; padding:12px 14px; margin-top:8px; }
 .calc-result { font-size:1.05rem; font-weight:700; color:#58a6ff !important; }
+.calc-eco-mini {
+  background: rgba(128,128,128,.09);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: .78rem;
+  text-align: center;
+}
+.detour-result-ok  { color: #3fb950 !important; font-weight: 700; font-size: .92rem; }
+.detour-result-bad { color: #f85149 !important; font-weight: 700; font-size: .92rem; }
+
+/* ── Sticky map desktop ── */
+@media (min-width: 768px) {
+  div[data-testid="stColumn"]:has(div[data-testid="stDeckGlJsonChart"]) {
+    position: sticky;
+    top: 3.5rem;
+    align-self: flex-start;
+    height: calc(100vh - 4.5rem);
+    overflow: hidden;
+  }
+}
 
 /* ── Légende carte ── */
 .map-legend { font-size:.73rem; opacity:.65; color:var(--text-color) !important; margin-top:4px; }
@@ -240,6 +260,17 @@ SVC = {
     "Location de véhicule":("🚙","bg-w"),
     "Carburant additivé":("⚗️","bg-w"),
     "Vente de gaz domestique (Butane, Propane)":("🔥","bg-w"),
+}
+
+# Consommation standard par profil de véhicule (L/100 km)
+CONSO_PRESETS = {
+    "🚗 Standard (6.5 L/100)":      6.5,
+    "🏙️ Citadine (5.5 L/100)":     5.5,
+    "🚗 Berline diesel (5.0 L/100)": 5.0,
+    "🛻 SUV / 4x4 (9.0 L/100)":    9.0,
+    "🚐 Utilitaire (8.5 L/100)":    8.5,
+    "⚡ Hybride (4.0 L/100)":       4.0,
+    "✏️ Personnalisé":               None,
 }
 
 JOURS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"]
@@ -425,29 +456,111 @@ def is_fav(station_id):
 # ══════════════════════════════════════════════════════════════════════════════
 # CALCULATEUR DE PLEIN
 # ══════════════════════════════════════════════════════════════════════════════
-def render_calculator(prix_min, carb_name):
-    """Calculateur interactif dans le sidebar/expander."""
+def render_calculator(prix_min, prix_max, prix_moy, carb_name, key_prefix=""):
+    """Calculateur interactif — coût du plein + économies vs moyenne et station la plus chère."""
     st.markdown("**⛽ Calculateur de plein**")
     cap = st.slider(
-        "Capacité du réservoir (L)",
+        "Réservoir (L)",
         min_value=20, max_value=110, value=50, step=5,
-        key="tank_cap",
+        key=f"{key_prefix}tank_cap",
     )
     fill_pct = st.slider(
-        "Niveau actuel (% plein)",
+        "Niveau actuel (%)",
         min_value=0, max_value=90, value=20, step=5,
-        key="tank_fill",
+        key=f"{key_prefix}tank_fill",
     )
-    litres_needed = cap * (1 - fill_pct / 100)
-    cout = litres_needed * prix_min
+    litres_needed = round(cap * (1 - fill_pct / 100), 1)
+    cout_min  = litres_needed * prix_min
+    eco_vs_moy = litres_needed * (prix_moy - prix_min)
+    eco_vs_max = litres_needed * (prix_max - prix_min)
     st.markdown(
         f'<div class="calc-box">'
-        f'<div style="font-size:.8rem;opacity:.7">Litres à faire : <b>{litres_needed:.0f} L</b></div>'
-        f'<div class="calc-result">💶 {cout:.2f} € au meilleur prix</div>'
-        f'<div style="font-size:.72rem;opacity:.55;margin-top:3px">{carb_name} à {prix_min:.3f} €/L</div>'
+        f'<div style="font-size:.8rem;opacity:.65;margin-bottom:4px">'
+        f'⛽ <b>{litres_needed:.0f} L</b> à faire · {carb_name} à <b>{prix_min:.3f} €/L</b>'
+        f'</div>'
+        f'<div class="calc-result">💶 {cout_min:.2f} € au meilleur prix</div>'
+        f'<div style="display:flex;gap:8px;margin-top:8px">'
+        f'<div class="calc-eco-mini" style="flex:1">'
+        f'<div style="color:#3fb950;font-weight:700;font-size:.9rem">−{eco_vs_moy:.2f}€</div>'
+        f'<div style="opacity:.6;font-size:.7rem">vs moyenne<br>({prix_moy:.3f}€/L)</div>'
+        f'</div>'
+        f'<div class="calc-eco-mini" style="flex:1">'
+        f'<div style="color:#d29922;font-weight:700;font-size:.9rem">−{eco_vs_max:.2f}€</div>'
+        f'<div style="opacity:.6;font-size:.7rem">vs + chère<br>({prix_max:.3f}€/L)</div>'
+        f'</div>'
+        f'</div>'
         f'</div>',
         unsafe_allow_html=True,
     )
+    return litres_needed, cap
+
+
+def render_detour_calc(df_d, carb_col, prix_min, litres_needed, key_prefix=""):
+    """Widget : vaut-il le détour vers la station la moins chère vs la plus proche ?"""
+    pc = f"{carb_col}_prix"
+    st.markdown("**🧮 Vaut-il le détour ?**")
+
+    preset_name = st.selectbox(
+        "Profil véhicule",
+        list(CONSO_PRESETS.keys()),
+        key=f"{key_prefix}conso_preset",
+        label_visibility="collapsed",
+    )
+    if CONSO_PRESETS[preset_name] is None:
+        conso = st.number_input(
+            "Conso (L/100km)", 2.0, 20.0, 6.5, 0.5,
+            key=f"{key_prefix}conso_val",
+        )
+    else:
+        conso = CONSO_PRESETS[preset_name]
+
+    best_row     = df_d[df_d[pc] == prix_min].iloc[0]
+    best_dist    = float(best_row.get("distance_km", 0) or 0)
+    closest_row  = df_d.sort_values("distance_km").iloc[0]
+    closest_px   = float(closest_row[pc])
+    closest_dist = float(closest_row.get("distance_km", 0) or 0)
+
+    if abs(prix_min - closest_px) < 0.0005:
+        st.markdown(
+            '<div class="calc-box"><span style="color:#3fb950;font-size:.85rem">' 
+            '✅ La station la moins chère est aussi la plus proche !</span></div>',
+            unsafe_allow_html=True,
+        )
+        return
+
+    detour_km   = max((best_dist - closest_dist) * 2, best_dist)
+    cout_detour = detour_km * conso / 100 * prix_min
+    eco_brute   = (closest_px - prix_min) * litres_needed
+    eco_nette   = eco_brute - cout_detour
+    ok          = eco_nette > 0
+    color       = "#3fb950" if ok else "#f85149"
+    icon        = "✅" if ok else "⚠️"
+    msg         = "ça vaut le coup !" if ok else "le détour coûte plus que l'économie"
+    css_res     = "detour-result-ok" if ok else "detour-result-bad"
+
+    st.markdown(
+        f'<div class="calc-box">'
+        f'<div style="font-size:.74rem;opacity:.6;margin-bottom:6px">'
+        f'📍 + proche : {closest_dist:.1f} km @ {closest_px:.3f} €/L'
+        f' → moins chère : {best_dist:.1f} km @ {prix_min:.3f} €/L'
+        f'</div>'
+        f'<div style="display:flex;gap:6px;margin-bottom:6px">'
+        f'<div class="calc-eco-mini" style="flex:1">'
+        f'<div style="color:#3fb950;font-weight:700">+{eco_brute:.2f}€</div>'
+        f'<div style="opacity:.6;font-size:.7rem">Éco. brute</div>'
+        f'</div>'
+        f'<div class="calc-eco-mini" style="flex:1">'
+        f'<div style="color:#f85149;font-weight:700">−{cout_detour:.2f}€</div>'
+        f'<div style="opacity:.6;font-size:.7rem">Coût détour ({detour_km:.1f} km)</div>'
+        f'</div>'
+        f'</div>'
+        f'<div style="color:{color};font-weight:700;font-size:.92rem">'
+        f'{icon} Gain réel : {eco_nette:+.2f} € — {msg}'
+        f'</div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # HERO CARD — Station la moins chère
@@ -677,6 +790,10 @@ def show_results(sb, carb_col, carb_name, user_lat, user_lon,
 
     pv = df[pc].astype(float)
     moy = pv.mean(); pmin, pmax = pv.min(), pv.max()
+    # Mémoriser pour le calculateur mobile et sidebar
+    st.session_state["prix_min_cache"] = pmin
+    st.session_state["prix_max_cache"] = pmax
+    st.session_state["prix_moy_cache"] = moy
 
     # ── KPIs ──
     st.caption(f"{'🟢 Temps réel' if via_rpc else '🟡 Direct'} · {len(df)} stations · {carb_name}")
@@ -703,6 +820,9 @@ def show_results(sb, carb_col, carb_name, user_lat, user_lon,
     elif sort_by == "Récent":  df_d = df.sort_values(mc, ascending=False, na_position="last")
     else:                      df_d = df.sort_values("distance_km")
 
+    # ── Sauvegarder df_d pour render_detour_calc (mobile/desktop) ──
+    st.session_state["df_last"] = df_d.copy()
+
     # ── Hero card (station la moins chère) ──
     best = df_d[df_d[pc] == pmin].iloc[0] if not df_d.empty else None
     if best is not None and sort_by in ("Distance", "Prix ↑"):
@@ -722,19 +842,30 @@ def show_results(sb, carb_col, carb_name, user_lat, user_lon,
         if cn not in dm.columns: dm[cn] = ""
 
     map_style = CARTO_DARK if dark_mode else CARTO_LIGHT
+    # Zoom adaptatif selon le rayon de recherche
+    zoom_map = 13 if radius <= 5 else (12 if radius <= 10 else (11 if radius <= 20 else 10))
     deck = pdk.Deck(
         map_style=map_style,
         initial_view_state=pdk.ViewState(
-            latitude=user_lat, longitude=user_lon, zoom=12, pitch=0),
+            latitude=user_lat, longitude=user_lon, zoom=zoom_map, pitch=0),
         layers=[
             pdk.Layer("ScatterplotLayer",
                 data=dm[["lat","lon","color","price_str","brand_str","adresse","ville"]],
-                get_position=["lon","lat"], get_color="color", get_radius=250,
+                get_position=["lon","lat"], get_color="color", get_radius=120,
                 pickable=True, auto_highlight=True, highlight_color=[255,200,0,255]),
+            pdk.Layer("TextLayer",
+                data=dm[["lat","lon","price_str"]],
+                get_position=["lon","lat"],
+                get_text="price_str",
+                get_size=11,
+                get_color=[230, 230, 230, 210],
+                get_anchor_x="'middle'",
+                get_pixel_offset=[0, -18],
+                pickable=False),
             pdk.Layer("ScatterplotLayer",
                 data=pd.DataFrame([{"lat": user_lat, "lon": user_lon}]),
                 get_position=["lon","lat"], get_color=[0,112,243,255],
-                get_radius=200, pickable=False),
+                get_radius=80, pickable=False),
         ],
         tooltip={
             "html": "<b>{brand_str}</b><br>{adresse}, {ville}<br>"
@@ -837,7 +968,12 @@ def main():
         if st.session_state.get("show_calc"):
             with st.expander("⛽ Calculateur de plein", expanded=True):
                 prix_min_est = st.session_state.get("prix_min_cache", 1.8)
-                render_calculator(prix_min_est, carb_name)
+                prix_max_est = st.session_state.get("prix_max_cache", 2.1)
+                prix_moy_est = st.session_state.get("prix_moy_cache", 1.9)
+                litres_m, _  = render_calculator(prix_min_est, prix_max_est, prix_moy_est, carb_name, key_prefix="m_")
+                if "df_last" in st.session_state and st.session_state["df_last"] is not None:
+                    st.divider()
+                    render_detour_calc(st.session_state["df_last"], carb_col, prix_min_est, litres_m, key_prefix="m_")
 
         if user_lat and user_lon:
             show_results(sb, carb_col, carb_name, user_lat, user_lon,
@@ -890,13 +1026,14 @@ def main():
             st.divider()
 
             # Calculateur de plein — sidebar desktop
-            st.markdown("**⛽ Calculateur de plein**")
-            tank_cap = st.slider("Réservoir (L)", 20, 110, 50, 5,
-                                 label_visibility="collapsed", key="tank_d")
-            fill_pct = st.slider("Niveau actuel (%)", 0, 90, 20, 5,
-                                 label_visibility="collapsed", key="fill_d")
-            st.session_state.tank_cap  = tank_cap
-            st.session_state.fill_pct  = fill_pct
+            p_min_d = st.session_state.get("prix_min_cache", 1.8)
+            p_max_d = st.session_state.get("prix_max_cache", 2.1)
+            p_moy_d = st.session_state.get("prix_moy_cache", 1.9)
+            litres_d, tank_cap = render_calculator(p_min_d, p_max_d, p_moy_d, carb_name, key_prefix="d_")
+            st.session_state.tank_cap = tank_cap
+            if "df_last" in st.session_state and st.session_state["df_last"] is not None:
+                st.divider()
+                render_detour_calc(st.session_state["df_last"], CARBURANTS[carb_name], p_min_d, litres_d, key_prefix="d_")
             st.divider()
             st.caption("v6.0 · data.gouv.fr")
 
